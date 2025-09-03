@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Eiendomsannonse Video-skaper — Fonter integrert via localStorage</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Fallback til noe lesbart inntil fontene lastes første gang */
+    :root {
+      --font-kondo: "Kondo Regular", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      --font-ddc: "Domaine Display Condensed", Georgia, serif;
+      --font-dtl: "Domaine Text Light", Georgia, serif;
+      --font-elp: "Elegant Lux Pro Mager", Georgia, serif;
+    }
+    body { font-family: var(--font-dtl); }
+
+    .font-kondo{font-family: var(--font-kondo)}
+    .font-elegantlux{font-family: var(--font-elp)}
+    .font-domaine-display{font-family: var(--font-ddc)}
+    .font-domaine-text{font-family: var(--font-dtl)}
+
+    ::-webkit-scrollbar{width:8px}
+    ::-webkit-scrollbar-track{background:#2d3748}
+    ::-webkit-scrollbar-thumb{background:#4a5568;border-radius:4px}
+    ::-webkit-scrollbar-thumb:hover{background:#718096}
+
+    details > summary { cursor:pointer; padding:.75rem; background:#4a5568; border-radius:.375rem; font-weight:500; transition:background-color .2s; }
+    details > summary:hover { background:#718096 }
+    details[open] > summary { border-bottom-left-radius:0; border-bottom-right-radius:0 }
+    .details-content { padding:1rem; border:1px solid #4a5568; border-top:none; border-bottom-left-radius:.375rem; border-bottom-right-radius:.375rem; }
+    .gemini-btn { background:#8B5CF6; transition:background-color .2s; padding:.25rem .5rem; font-size:.75rem; border-radius:.375rem; }
+    .gemini-btn:hover { background:#7C3AED }
+    .gemini-btn:disabled { background:#4a5568; cursor:not-allowed }
+
+    /* Hit injiseres @font-face reglene dynamisk etter opplasting / fra localStorage */
+  </style>
+  <style id="injected-font-css"></style>
+</head>
+<body class="bg-gray-900 text-white">
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Input Panel -->
+    <div class="w-full lg:w-1/3 bg-gray-800 p-6 overflow-y-auto" style="max-height:100vh;">
+      <div class="max-w-md mx-auto">
+        <h2 class="text-3xl font-bold mb-6 text-center text-indigo-400 font-domaine-display">Lag din annonse</h2>
+
+        <!-- === FONT-OPPLASTER (engangs) === -->
+        <details open>
+          <summary>Fonter (integrer lokalt)</summary>
+          <div class="details-content space-y-3 text-sm">
+            <p class="opacity-80">
+              Last opp de fire OTF-filene under. De lagres som base64 i denne nettleseren (localStorage) og
+              brukes automatisk ved forhåndsvisning og eksport.
+            </p>
+            <div class="grid grid-cols-1 gap-3">
+              <label class="block">
+                <span class="block mb-1">Kondo Regular (.otf)</span>
+                <input id="fontKondo" type="file" accept=".otf" class="block w-full text-xs text-gray-300"/>
+              </label>
+              <label class="block">
+                <span class="block mb-1">Domaine Display Condensed (.otf)</span>
+                <input id="fontDDC" type="file" accept=".otf" class="block w-full text-xs text-gray-300"/>
+              </label>
+              <label class="block">
+                <span class="block mb-1">Domaine Text Light (.otf)</span>
+                <input id="fontDTL" type="file" accept=".otf" class="block w-full text-xs text-gray-300"/>
+              </label>
+              <label class="block">
+                <span class="block mb-1">Elegant Lux Pro Mager (.otf)</span>
+                <input id="fontELP" type="file" accept=".otf" class="block w-full text-xs text-gray-300"/>
+              </label>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="saveFontsBtn" class="gemini-btn">💾 Lagre & aktiver</button>
+              <button id="clearFontsBtn" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-xs">🧹 Nullstill</button>
+              <span id="fontStatus" class="text-xs opacity-80"></span>
+            </div>
+            <ul class="text-xs leading-5 opacity-80 list-disc pl-5">
+              <li>Etter «Lagre & aktiver»: vent 1–2 sek. Teksten under bekrefter lastestatus.</li>
+              <li>Du trenger ikke kjøre en server – alt ligger i denne ene HTML-filen + localStorage.</li>
+              <li>Eksporten bruker nøyaktig samme fonter som vises i forhåndsvisningen.</li>
+            </ul>
+          </div>
+        </details>
+
+        <form id="adForm" class="space-y-4 mt-6">
+          <details open>
+            <summary>Tema og Adresse</summary>
+            <div class="details-content space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-300">Tema</label>
+                <select id="theme" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm sm:text-sm p-2" disabled>
+                  <option value="magasin">Magasin</option>
+                </select>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <div class="col-span-2">
+                  <label for="addressStreet" class="block text-sm font-medium text-gray-300">Gatenavn</label>
+                  <input type="text" id="addressStreet" value="Melkeveien" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+                </div>
+                <div>
+                  <label for="addressNumber" class="block text-sm font-medium text-gray-300">Nr.</label>
+                  <input type="text" id="addressNumber" value="7A" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Beskrivelse</summary>
+            <div class="details-content space-y-4">
+              <div id="titleContainer">
+                <div class="flex justify-between items-center mb-1">
+                  <label for="title" class="block text-sm font-medium text-gray-300">Tittel (for noen temaer)</label>
+                  <button type="button" id="generateTitleBtn" class="gemini-btn">✨ Foreslå</button>
+                </div>
+                <input type="text" id="title" value="Arkitekttegnet villa med påkostet standard" class="block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+              </div>
+              <div>
+                <label for="location" class="block text-sm font-medium text-gray-300">Område / Sted</label>
+                <input type="text" id="location" value="Vettakollen" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+              </div>
+              <div>
+                <div class="flex justify-between items-center mb-1">
+                  <label for="description" class="block text-sm font-medium text-gray-300">Kort beskrivelse</label>
+                  <button type="button" id="generateDescBtn" class="gemini-btn">✨ Generer</button>
+                </div>
+                <textarea id="description" rows="3" class="block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">og nydelig utsikt - Flott hage og fine uteplasser - Utleiedel - Garasje</textarea>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Eiendomsdetaljer</summary>
+            <div class="details-content space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label for="area" class="block text-sm font-medium text-gray-300">Areal (m²)</label>
+                  <input type="number" id="area" value="404" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+                </div>
+                <div>
+                  <label for="year" class="block text-sm font-medium text-gray-300">Byggeår</label>
+                  <input type="number" id="year" value="1958" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+                </div>
+                <div>
+                  <label for="bedrooms" class="block text-sm font-medium text-gray-300">Soverom</label>
+                  <input type="number" id="bedrooms" value="5" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+                </div>
+                <div>
+                  <label for="bathrooms" class="block text-sm font-medium text-gray-300">Bad</label>
+                  <input type="number" id="bathrooms" value="3" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Pris og Visning</summary>
+            <div class="details-content space-y-4">
+              <div>
+                <label for="price" class="block text-sm font-medium text-gray-300">Prisantydning</label>
+                <input type="text" id="price" value="33 500 000,-" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+              </div>
+              <div>
+                <label for="viewing1" class="block text-sm font-medium text-gray-300">Visning 1</label>
+                <input type="text" id="viewing1" value="Kontakt megler for visning" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+              </div>
+              <div>
+                <label for="viewing2" class="block text-sm font-medium text-gray-300">Visning 2</label>
+                <input type="text" id="viewing2" value="" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2" placeholder="La stå tomt for én visning">
+              </div>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Timing og Filer</summary>
+            <div class="details-content space-y-4">
+              <div>
+                <label for="duration" class="block text-sm font-medium text-gray-300">Total varighet (sekunder)</label>
+                <input type="number" id="duration" value="20" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm p-2">
+              </div>
+              <div>
+                <label for="images" class="block text-sm font-medium text-gray-300">Bilder (last opp flere)</label>
+                <input type="file" id="images" multiple accept="image/*" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600">
+              </div>
+              <div>
+                <label for="logo" class="block text-sm font-medium text-gray-300">Logo</label>
+                <input type="file" id="logo" accept="image/*" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600">
+              </div>
+              <div>
+                <label for="backgroundMusic" class="block text-sm font-medium text-gray-300">Bakgrunnsmusikk</label>
+                <input type="file" id="backgroundMusic" accept="audio/*" class="mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600">
+              </div>
+              <div>
+                <label for="resolution" class="block text-sm font-medium text-gray-300">Eksportoppløsning</label>
+                <select id="resolution" class="mt-1 block w-full bg-gray-700 border-gray-600 rounded-md shadow-sm sm:text-sm p-2">
+                  <option value="720">720p (720×1280)</option>
+                  <option value="1080" selected>1080p (1080×1920)</option>
+                  <option value="2160">4K (2160×3840)</option>
+                </select>
+              </div>
+            </div>
+          </details>
+        </form>
+
+        <div class="mt-6 p-3 rounded bg-gray-700/50 text-sm">
+          <div class="font-semibold mb-2">Fontstatus</div>
+          <ul class="space-y-1" id="fontStatusList">
+            <li id="fs-kondo">Kondo Regular: <span class="opacity-70">venter…</span></li>
+            <li id="fs-ddc">Domaine Display Condensed: <span class="opacity-70">venter…</span></li>
+            <li id="fs-dtl">Domaine Text Light: <span class="opacity-70">venter…</span></li>
+            <li id="fs-elp">Elegant Lux Pro Mager: <span class="opacity-70">venter…</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Panel -->
+    <div class="w-full lg:w-2/3 flex flex-col items-center justify-center p-6 bg-gray-900">
+      <h2 class="text-2xl font-bold mb-4">Forhåndsvisning</h2>
+      <div id="canvas-container" class="bg-black rounded-lg shadow-2xl overflow-hidden" style="width:360px; height:640px;">
+        <canvas id="previewCanvas" width="720" height="1280" style="width:100%; height:100%;"></canvas>
+      </div>
+      <div id="status" class="mt-4 text-center text-gray-400 h-6"></div>
+      <div class="flex space-x-4 mt-4">
+        <button id="previewBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Forhåndsvisning</button>
+        <button id="generateBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Generer Video</button>
+        <a id="downloadLink" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Last ned video</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ============================
+       1) FONT-INTEGRASJON (localStorage)
+       ============================ */
+    const FONT_KEYS = {
+      kondo: 'font_kondo_otf_base64',
+      ddc:   'font_ddc_otf_base64',
+      dtl:   'font_dtl_otf_base64',
+      elp:   'font_elp_otf_base64',
+    };
+    const fontStatusEl = document.getElementById('fontStatus');
+    const injectedFontCssEl = document.getElementById('injected-font-css');
+
+    function b64FromFile(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onerror = () => reject(r.error);
+        r.onload = () => resolve(r.result.split(',')[1]); // bare base64-delen
+        r.readAsDataURL(file);
+      });
+    }
+
+    function injectFontCssFromLocalStorage() {
+      const kondo = localStorage.getItem(FONT_KEYS.kondo);
+      const ddc   = localStorage.getItem(FONT_KEYS.ddc);
+      const dtl   = localStorage.getItem(FONT_KEYS.dtl);
+      const elp   = localStorage.getItem(FONT_KEYS.elp);
+
+      let css = '';
+      if (kondo) css += `
+@font-face {
+  font-family: 'Kondo Regular';
+  src: url(data:font/otf;base64,${kondo}) format('opentype');
+  font-weight: 400; font-style: normal; font-display: block;
+}`;
+      if (ddc) css += `
+@font-face {
+  font-family: 'Domaine Display Condensed';
+  src: url(data:font/otf;base64,${ddc}) format('opentype');
+  font-weight: 400; font-style: normal; font-display: block;
+}`;
+      if (dtl) css += `
+@font-face {
+  font-family: 'Domaine Text Light';
+  src: url(data:font/otf;base64,${dtl}) format('opentype');
+  font-weight: 400; font-style: normal; font-display: block;
+}`;
+      if (elp) css += `
+@font-face {
+  font-family: 'Elegant Lux Pro Mager';
+  src: url(data:font/otf;base64,${elp}) format('opentype');
+  font-weight: 400; font-style: normal; font-display: block;
+}`;
+
+      injectedFontCssEl.textContent = css;
+    }
+
+    async function waitFonts() {
+      // Vent til alle som finnes i CSS er lastet
+      const tests = [
+        '400 40px "Kondo Regular"',
+        '400 40px "Domaine Display Condensed"',
+        '400 30px "Domaine Text Light"',
+        '400 30px "Elegant Lux Pro Mager"',
+      ];
+      try {
+        await Promise.all(tests.map(t => document.fonts.load(t, 'ÅØÆ Probe 0123')));
+        await document.fonts.ready;
+      } catch(e) { /* ignore */ }
+
+      // Oppdater statusliste
+      const ok = (id) => {
+        const li = document.getElementById(id);
+        if (!li) return;
+        li.innerHTML = li.innerHTML.replace(/venter…|mangler/i, '<span class="text-green-400">OK</span>');
+      };
+      if (document.fonts.check('400 20px "Kondo Regular"')) ok('fs-kondo');
+      if (document.fonts.check('400 20px "Domaine Display Condensed"')) ok('fs-ddc');
+      if (document.fonts.check('400 20px "Domaine Text Light"')) ok('fs-dtl');
+      if (document.fonts.check('400 20px "Elegant Lux Pro Mager"')) ok('fs-elp');
+    }
+
+    async function handleSaveFonts() {
+      const fK = document.getElementById('fontKondo').files[0];
+      const fD = document.getElementById('fontDDC').files[0];
+      const fT = document.getElementById('fontDTL').files[0];
+      const fE = document.getElementById('fontELP').files[0];
+
+      try {
+        if (fK) localStorage.setItem(FONT_KEYS.kondo, await b64FromFile(fK));
+        if (fD) localStorage.setItem(FONT_KEYS.ddc,   await b64FromFile(fD));
+        if (fT) localStorage.setItem(FONT_KEYS.dtl,   await b64FromFile(fT));
+        if (fE) localStorage.setItem(FONT_KEYS.elp,   await b64FromFile(fE));
+
+        injectFontCssFromLocalStorage();
+        await waitFonts();
+
+        const msg = 'Fonter er lagret og aktivert.';
+        document.getElementById('fontStatus').textContent = msg;
+      } catch (e) {
+        document.getElementById('fontStatus').textContent = 'Kunne ikke lagre fonter: ' + (e && e.message ? e.message : e);
+      }
+    }
+
+    function handleClearFonts() {
+      Object.values(FONT_KEYS).forEach(k => localStorage.removeItem(k));
+      injectedFontCssEl.textContent = '';
+      document.getElementById('fontStatus').textContent = 'Fonter slettet. Last opp på nytt.';
+      document.getElementById('fs-kondo').innerHTML = 'Kondo Regular: <span class="opacity-70">mangler</span>';
+      document.getElementById('fs-ddc').innerHTML   = 'Domaine Display Condensed: <span class="opacity-70">mangler</span>';
+      document.getElementById('fs-dtl').innerHTML   = 'Domaine Text Light: <span class="opacity-70">mangler</span>';
+      document.getElementById('fs-elp').innerHTML   = 'Elegant Lux Pro Mager: <span class="opacity-70">mangler</span>';
+    }
+
+    // Koble knapper
+    document.getElementById('saveFontsBtn').addEventListener('click', (e)=> { e.preventDefault(); handleSaveFonts(); });
+    document.getElementById('clearFontsBtn').addEventListener('click', (e)=> { e.preventDefault(); handleClearFonts(); });
+
+    // Ved oppstart: injiser fonter hvis de allerede ligger i localStorage
+    injectFontCssFromLocalStorage();
+
+    /* ============================
+       2) APP-STATE/RENDER
+       ============================ */
+    const canvas = document.getElementById('previewCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const BASE_WIDTH = 720, BASE_HEIGHT = 1280;
+    let LAYOUT_SCALE = 1;
+
+    const form = document.getElementById('adForm');
+    const generateBtn = document.getElementById('generateBtn');
+    const previewBtn = document.getElementById('previewBtn');
+    const downloadLink = document.getElementById('downloadLink');
+    const statusEl = document.getElementById('status');
+
+    let adData = { images: [] };
+    let loadedImages = [];
+    let loadedLogo = null;
+    let audio = new Audio();
+    let musicUrl = null;
+
+    let mediaRecorder;
+    let recordedChunks = [];
+    let isGenerating = false;
+
+    let currentImageIndex = 0;
+    let lastFrameTime = 0;
+    let timeSinceLastSwitch = 0;
+    let isPlaying = false;
+    let SLIDE_DURATION = 4000;
+    let TOTAL_DURATION = 20000;
+    let totalElapsedTime = 0;
+    const FADE_DURATION = 500;
+
+    function pickSupportedMime() {
+      const c = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm;codecs=vp09.00.10.08','video/webm',''];
+      for (const m of c) { try { if (!m) return ''; if (MediaRecorder.isTypeSupported(m)) return m; } catch(e){} }
+      return '';
+    }
+
+    const getFormValue = id => document.getElementById(id).value;
+    function updateAdData() {
+      adData = {
+        theme: 'magasin',
+        addressStreet: getFormValue('addressStreet'),
+        addressNumber: getFormValue('addressNumber'),
+        title: getFormValue('title'),
+        location: getFormValue('location'),
+        description: getFormValue('description'),
+        area: getFormValue('area'),
+        year: getFormValue('year'),
+        bedrooms: getFormValue('bedrooms'),
+        bathrooms: getFormValue('bathrooms'),
+        price: getFormValue('price'),
+        viewing1: getFormValue('viewing1'),
+        viewing2: getFormValue('viewing2'),
+      };
+      TOTAL_DURATION = (parseInt(getFormValue('duration'), 10) || 20) * 1000;
+      SLIDE_DURATION = loadedImages.length > 0 ? TOTAL_DURATION / loadedImages.length : 4000;
+    }
+
+    function loadInitialFiles() {
+      const urls = [
+        'https://placehold.co/720x1280/2d3748/ffffff?text=Bilde+1',
+        'https://placehold.co/720x1280/4a5568/ffffff?text=Bilde+2',
+        'https://placehold.co/720x1280/718096/ffffff?text=Bilde+3',
+        'https://placehold.co/720x1280/1a202c/ffffff?text=Bilde+4',
+      ];
+      let remain = urls.length;
+      urls.forEach(url=>{
+        const img = new Image(); img.crossOrigin='anonymous'; img.src=url;
+        img.onload=()=>{ loadedImages.push(img); remain--; if(remain===0 && loadedLogo){ updateAdData(); } };
+      });
+      // Default logo
+      const lc = document.createElement('canvas'); lc.width=100; lc.height=100;
+      const lctx = lc.getContext('2d');
+      lctx.fillStyle = '#b3925d'; lctx.strokeStyle = 'white';
+      lctx.lineWidth = 5; lctx.strokeRect(0,0,100,100);
+      lctx.fillStyle = 'white'; lctx.font = '400 70px "Domaine Display Condensed"';
+      lctx.textAlign = 'center'; lctx.textBaseline = 'middle';
+      lctx.fillText('P', 50, 55);
+      const defaultLogoImg = new Image();
+      defaultLogoImg.src = lc.toDataURL();
+      defaultLogoImg.onload = ()=>{ loadedLogo = defaultLogoImg; };
+    }
+
+    function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+    function drawImageWithAspectRatio(img) {
+      const canvasAspect = BASE_WIDTH / BASE_HEIGHT;
+      const imgAspect = img.width / img.height;
+      let sx,sy,sWidth,sHeight;
+      if (imgAspect > canvasAspect) { sHeight = img.height; sWidth = sHeight*canvasAspect; sx=(img.width-sWidth)/2; sy=0; }
+      else { sWidth = img.width; sHeight = sWidth/canvasAspect; sx=0; sy=(img.height-sHeight)/2; }
+      ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, BASE_WIDTH, BASE_HEIGHT);
+    }
+    function drawText(text, x, y, font, color, align='left') {
+      ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.fillText(text, x, y);
+    }
+    function drawTextWithOutline(text, x, y, font, color, align='left') {
+      ctx.font = font; ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.textAlign = align; ctx.strokeText(text, x, y);
+    }
+    function wrapText(text, x, y, maxWidth, lineHeight, font, color, align='left') {
+      ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align;
+      const words = (text||'').split(' '); let line=''; const lines=[];
+      for (let n=0; n<words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        if (ctx.measureText(testLine).width > maxWidth && n>0) { lines.push(line.trim()); line = words[n] + ' '; }
+        else { line = testLine; }
+      }
+      lines.push(line.trim()); lines.forEach((l,i)=>ctx.fillText(l, x, y+i*lineHeight));
+    }
+    function findOptimalFontSize(text, family, weight, maxWidth) {
+      let fontSize = 200;
+      while (fontSize > 10) {
+        ctx.font = `${weight} ${fontSize}px "${family}"`;
+        if (ctx.measureText(text).width < maxWidth) return fontSize;
+        fontSize -= 2;
+      }
+      return 10;
+    }
+
+    function renderFrame(time) {
+      if (!lastFrameTime) lastFrameTime = time;
+      const dt = time - lastFrameTime;
+      lastFrameTime = time;
+      if (isPlaying || isGenerating) { timeSinceLastSwitch += dt; totalElapsedTime += dt; }
+
+      ctx.setTransform(LAYOUT_SCALE,0,0,LAYOUT_SCALE,0,0);
+      ctx.clearRect(0,0,BASE_WIDTH,BASE_HEIGHT);
+
+      let mainAlpha = 1.0;
+      const outroStart = 16000;
+      const outroDur = TOTAL_DURATION - outroStart;
+      if (totalElapsedTime > outroStart) {
+        const p = (totalElapsedTime - outroStart)/outroDur;
+        mainAlpha = 1.0 - easeInOutCubic(Math.min(p,1.0));
+      }
+
+      ctx.save();
+      ctx.globalAlpha = mainAlpha;
+      const gP = Math.min(totalElapsedTime/TOTAL_DURATION, 1.0);
+      const gScale = 1.0 + gP*0.15;
+      ctx.translate(BASE_WIDTH/2, BASE_HEIGHT/2);
+      ctx.scale(gScale, gScale);
+      ctx.translate(-BASE_WIDTH/2, -BASE_HEIGHT/2);
+
+      if (loadedImages.length) {
+        if (timeSinceLastSwitch >= SLIDE_DURATION) {
+          const overflow = timeSinceLastSwitch - SLIDE_DURATION;
+          currentImageIndex = (currentImageIndex + 1) % loadedImages.length;
+          timeSinceLastSwitch = overflow;
+        }
+        const prevIdx = (currentImageIndex - 1 + loadedImages.length) % loadedImages.length;
+        const currentImg = loadedImages[currentImageIndex];
+        const prevImg = loadedImages[prevIdx];
+
+        drawImageWithAspectRatio(prevImg);
+        if (timeSinceLastSwitch < FADE_DURATION) {
+          ctx.globalAlpha = (timeSinceLastSwitch/FADE_DURATION) * mainAlpha;
+          drawImageWithAspectRatio(currentImg);
+        } else {
+          drawImageWithAspectRatio(currentImg);
+        }
+      } else { ctx.fillStyle='#1a202c'; ctx.fillRect(0,0,BASE_WIDTH,BASE_HEIGHT); }
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = mainAlpha;
+      drawThemedContent(totalElapsedTime);
+      ctx.restore();
+
+      if (totalElapsedTime > outroStart) {
+        const p = (totalElapsedTime - outroStart)/outroDur;
+        ctx.globalAlpha = easeInOutCubic(Math.min(p,1.0));
+        ctx.fillStyle = '#262830'; ctx.fillRect(0,0,BASE_WIDTH,BASE_HEIGHT);
+        if (loadedLogo) {
+          const h = 150; const w = (loadedLogo.width/loadedLogo.height)*h;
+          ctx.drawImage(loadedLogo, BASE_WIDTH/2 - w/2, BASE_HEIGHT/2 - h/2, w, h);
+        }
+      }
+      requestAnimationFrame(renderFrame);
+    }
+
+    function drawThemedContent(t) {
+      const priceStart = 1000, priceEnd = 6000, viewStart = 8000, viewEnd = 13000;
+      let active = null;
+      if (t>priceStart && t<priceEnd) active='price';
+      else if (t>viewStart && t<viewEnd) active='viewing';
+
+      const marginX=60, centerX=BASE_WIDTH/2, rightX=BASE_WIDTH-marginX;
+
+      const streetColor='#EDBDF2', numberColor='#EDBDF2', priceColor='#EDBDF2', smallTextColor='#E5E3E4';
+
+      // Adresse i Kondo
+      ctx.textBaseline = 'top';
+      const streetMaxWidth = BASE_WIDTH - 40;
+      const streetSize = findOptimalFontSize(adData.addressStreet, 'Kondo Regular', '400', streetMaxWidth);
+      const streetFont = `400 ${streetSize}px "Kondo Regular"`;
+      drawText(adData.addressStreet, centerX, 80, streetFont, streetColor, 'center');
+
+      const tempY = 80 + streetSize * 0.9 + 10;
+      drawTextWithOutline(adData.addressNumber, centerX, tempY, '400 130px "Kondo Regular"', numberColor, 'center');
+
+      ctx.font = streetFont;
+      const streetMetrics = ctx.measureText(adData.addressStreet);
+      const streetStartX = centerX - (streetMetrics.width/2);
+      const streetEndX = centerX + (streetMetrics.width/2);
+      const detailsY = tempY + 30;
+      ctx.textBaseline='alphabetic';
+
+      const LABEL_FONT='Elegant Lux Pro Mager', VALUE_FONT='Domaine Display Condensed', BODY_FONT='Domaine Text Light';
+
+      const arealX = streetStartX;
+      drawText('Areal', arealX, detailsY, `400 24px "${LABEL_FONT}"`, smallTextColor, 'left');
+      drawText(`${adData.area} m²`, arealX, detailsY+30, `400 26px "${VALUE_FONT}"`, smallTextColor, 'left');
+
+      ctx.font = `400 26px "${VALUE_FONT}"`;
+      const arealValW = ctx.measureText(`${adData.area} m²`).width;
+      const byggeaarX = arealX + arealValW + 40;
+
+      drawText('Byggeår', byggeaarX, detailsY, `400 24px "${LABEL_FONT}"`, smallTextColor, 'left');
+      drawText(adData.year, byggeaarX, detailsY+30, `400 26px "${VALUE_FONT}"`, smallTextColor, 'left');
+
+      const badX = streetEndX;
+      drawText('Bad', badX, detailsY, `400 24px "${LABEL_FONT}"`, smallTextColor, 'right');
+      drawText(adData.bathrooms, badX, detailsY+30, `400 26px "${VALUE_FONT}"`, smallTextColor, 'right');
+
+      ctx.font = `400 26px "${VALUE_FONT}"`;
+      const badValW = ctx.measureText(adData.bathrooms).width;
+      const soveromX = badX - badValW - 40;
+      drawText('Soverom', soveromX, detailsY, `400 24px "${LABEL_FONT}"`, smallTextColor, 'right');
+      drawText(adData.bedrooms, soveromX, detailsY+30, `400 26px "${VALUE_FONT}"`, smallTextColor, 'right');
+
+      // Område overskrift (Snell Roundhand fallback)
+      const locationY = 450;
+      drawText(adData.location, marginX, locationY, `italic 700 70px "Snell Roundhand","Dancing Script",cursive`, smallTextColor);
+
+      // Beskrivelse i Domaine Text
+      wrapText(adData.description, marginX, locationY+45, 450, 40, `400 28px "${BODY_FONT}"`, smallTextColor);
+
+      // Logo
+      if (loadedLogo) {
+        const logoH=80, logoW=(loadedLogo.width/loadedLogo.height)*logoH;
+        const bottomCenterY = BASE_HEIGHT - 100;
+        ctx.drawImage(loadedLogo, centerX-logoW/2, bottomCenterY-logoH, logoW, logoH);
+      }
+
+      // Visning (heading i Kondo, info i Elegant Lux Pro)
+      if (active!=='viewing') {
+        const y = BASE_HEIGHT - 480;
+        drawText('Visning', rightX, y, `400 70px "Kondo Regular"`, smallTextColor, 'right');
+        drawText(adData.viewing1, rightX, y+40, `400 28px "Elegant Lux Pro Mager"`, smallTextColor, 'right');
+        if (adData.viewing2) drawText(adData.viewing2, rightX, y+80, `400 28px "Elegant Lux Pro Mager"`, smallTextColor, 'right');
+      }
+
+      // Pris (begge i Domaine Display Condensed)
+      if (active!=='price') {
+        const y = BASE_HEIGHT - 300;
+        drawText('Prisantydning', marginX, y, `400 32px "Domaine Display Condensed"`, smallTextColor);
+        drawText(adData.price, marginX, y+55, `700 60px "Domaine Display Condensed"`, priceColor);
+      }
+
+      // Highlight-animasjoner
+      let phase=0; const s=1.0, e=1.5;
+      if (active==='price') {
+        phase = t - priceStart; const dur = priceEnd - priceStart; const inD = dur*0.4; const outS = dur*0.6;
+        let ep=0; if(phase<inD) ep=easeInOutCubic(phase/inD); else if(phase>outS) ep=1-easeInOutCubic((phase-outS)/(dur-outS)); else ep=1;
+        const startX = marginX, targetX=marginX+50, x=startX+(targetX-startX)*ep, scale=s+(e-s)*ep;
+        ctx.save(); ctx.translate(x, BASE_HEIGHT-300); ctx.scale(scale, scale);
+        drawText('Prisantydning', 0, 0, `400 32px "Domaine Display Condensed"`, smallTextColor, 'left');
+        drawText(adData.price, 0, 55, `700 60px "Domaine Display Condensed"`, '#EDBDF2', 'left');
+        ctx.restore();
+      }
+      if (active==='viewing') {
+        phase = t - viewStart; const dur = viewEnd - viewStart; const inD = dur*0.4; const outS = dur*0.6;
+        let ep=0; if(phase<inD) ep=easeInOutCubic(phase/inD); else if(phase>outS) ep=1-easeInOutCubic((phase-outS)/(dur-outS)); else ep=1;
+        const startX = rightX, targetX=rightX-50, x=startX+(targetX-startX)*ep, scale=s+(e-s)*ep;
+        ctx.save(); ctx.translate(x, BASE_HEIGHT-480); ctx.scale(scale, scale);
+        drawText('Visning', 0, 0, `400 70px "Kondo Regular"`, smallTextColor, 'right');
+        drawText(adData.viewing1, 0, 40, `400 28px "Elegant Lux Pro Mager"`, smallTextColor, 'right');
+        if (adData.viewing2) drawText(adData.viewing2, 0, 80, `400 28px "Elegant Lux Pro Mager"`, smallTextColor, 'right');
+        ctx.restore();
+      }
+    }
+
+    // Files
+    function handleFileChange(event, isMultiple, onLoaded) {
+      const files = event.target.files;
+      if (!files.length) return;
+      const fileArray = Array.from(files);
+      let loadedCount = 0;
+      const loadedItems = [];
+      fileArray.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            loadedItems.push(img);
+            loadedCount++;
+            if (loadedCount === fileArray.length) { onLoaded(isMultiple ? loadedItems : loadedItems[0]); }
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    document.getElementById('images').addEventListener('change', (e) => handleFileChange(e, true, (images) => { loadedImages = images; currentImageIndex = 0; timeSinceLastSwitch = 0; }));
+    document.getElementById('logo').addEventListener('change', (e) => handleFileChange(e, false, (logo) => { loadedLogo = logo; }));
+    document.getElementById('backgroundMusic').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        if (musicUrl) URL.revokeObjectURL(musicUrl);
+        musicUrl = URL.createObjectURL(file);
+        audio.src = musicUrl;
+      }
+    });
+
+    document.getElementById('previewBtn').addEventListener('click', ()=>{
+      isPlaying = !isPlaying;
+      document.getElementById('previewBtn').textContent = isPlaying ? 'Pause' : 'Forhåndsvisning';
+      if (isPlaying) {
+        totalElapsedTime=0; timeSinceLastSwitch=0; currentImageIndex=0; if(musicUrl){ audio.currentTime=0; audio.play(); }
+      } else { if (musicUrl) audio.pause(); }
+    });
+
+    document.getElementById('generateBtn').addEventListener('click', ()=>{ if(!isGenerating) generateVideo(); });
+
+    function generateVideo() {
+      if (!loadedImages.length) { statusEl.textContent='Last opp bilder først.'; setTimeout(()=>statusEl.textContent='',3000); return; }
+      const res = document.getElementById('resolution').value;
+      const scale = res==='2160' ? 3 : res==='1080' ? 1.5 : 1;
+      const exportW = BASE_WIDTH*scale, exportH = BASE_HEIGHT*scale;
+
+      isGenerating = true; isPlaying = false;
+      document.getElementById('previewBtn').disabled = true;
+      document.getElementById('generateBtn').disabled = true;
+      statusEl.textContent = `Eksporterer i ${exportW}×${exportH}…`;
+
+      const prevW = canvas.width, prevH = canvas.height, prevScale = LAYOUT_SCALE;
+      canvas.width = exportW; canvas.height = exportH; LAYOUT_SCALE = scale;
+      ctx.setTransform(LAYOUT_SCALE,0,0,LAYOUT_SCALE,0,0);
+
+      currentImageIndex=0; timeSinceLastSwitch=0; totalElapsedTime=0; lastFrameTime=0;
+      isPlaying = true; if (musicUrl) { audio.currentTime=0; audio.play(); }
+
+      const stream = canvas.captureStream(60);
+      const mime = pickSupportedMime();
+      const opts = mime ? { mimeType: mime, videoBitsPerSecond: 20000000 } : { videoBitsPerSecond: 20000000 };
+      try { mediaRecorder = new MediaRecorder(stream, opts); }
+      catch(e){ statusEl.textContent='MediaRecorder støttes ikke her.'; isGenerating=false; return; }
+
+      recordedChunks=[];
+      mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = ()=>{
+        const blob = new Blob(recordedChunks, { type:'video/webm' });
+        const a = document.getElementById('downloadLink');
+        a.href = URL.createObjectURL(blob);
+        a.download = `eiendomsannonse-${(adData.addressStreet||'adresse').replace(/\s+/g,'_')}.webm`;
+        a.classList.remove('hidden');
+
+        isGenerating=false; isPlaying=false;
+        document.getElementById('previewBtn').disabled=false;
+        document.getElementById('generateBtn').disabled=false;
+        statusEl.textContent = `Video klar (${exportW}×${exportH}).`;
+        if (musicUrl) { audio.pause(); audio.currentTime=0; }
+
+        // Restore preview
+        canvas.width = BASE_WIDTH; canvas.height = BASE_HEIGHT;
+        LAYOUT_SCALE = 1; ctx.setTransform(1,0,0,1,0,0);
+      };
+
+      mediaRecorder.start();
+      setTimeout(()=>{ if(mediaRecorder.state==='recording'){ mediaRecorder.stop(); isPlaying=false; } }, TOTAL_DURATION);
+    }
+
+    // Init
+    async function init() {
+      updateAdData();
+      loadInitialFiles();
+      await waitFonts();           // Venter på innebygde (via localStorage) fonter
+      requestAnimationFrame(renderFrame);
+    }
+    form.addEventListener('input', updateAdData);
+    init();
+  </script>
+</body>
+</html>
